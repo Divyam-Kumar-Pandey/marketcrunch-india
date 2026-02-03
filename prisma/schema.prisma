@@ -15,3 +15,23 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Prediction {
+  id String @id @default(uuid())
+  stockCode String 
+  stockName String
+  currentPrice Float
+  priceChange Float
+  priceChangePercentage Float
+  predictedPriceIn30Days Float
+  predictedPriceIn90Days Float
+  predictedPriceIn180Days Float
+  date LocalDate @default(now())
+  signal String
+  accuracy Int
+  result String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stockCode, date])
+}
