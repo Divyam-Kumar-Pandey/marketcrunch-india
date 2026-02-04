@@ -83,7 +83,8 @@ export default function LoginClient() {
       return;
     }
 
-    setSuccessMessage("Check your inbox to confirm your email, then sign in.");
+    // setSuccessMessage("Check your inbox to confirm your email, then sign in.");
+    setSuccessMessage("Account created successfully. Please sign in.");
   };
 
   return (
