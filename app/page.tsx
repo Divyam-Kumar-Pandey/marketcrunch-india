@@ -102,7 +102,7 @@ export default function Home() {
                 signals. Built for Gen Z traders who trust data, not noise.
               </p>
               <div className="flex flex-wrap gap-4">
-                <button className="rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-[#0A1128] shadow-lg shadow-amber-500/20">
+                <button onClick={() => window.location.href = "/login"} className="rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-[#0A1128] shadow-lg shadow-amber-500/20">
                   Start Predicting
                 </button>
                 <button className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/80">
