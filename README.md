@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MarketCrunch India
 
-## Getting Started
+AI-powered Indian stock analysis and report generation. MarketCrunch India fetches public fundamentals from Screener.in, runs a Gemini-powered evaluation, and delivers a detailed prediction report for NSE/BSE-listed stocks. It includes Supabase authentication and a credit system to control report generation.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Search by stock code and generate a fundamentals-based report
+- Gemini-backed prediction engine with structured outputs
+- Supabase auth for sign-in and gated access
+- Credit system (default 10 credits, 1 credit per report)
+- Report history with quick access to recent predictions
+
+## Tech Stack
+
+- Next.js 16 (App Router) + React 19
+- Tailwind CSS + MUI
+- Prisma + PostgreSQL
+- Supabase Auth (SSR + browser clients)
+- Google Gemini API (`@google/genai`)
+- Cheerio for Screener.in data extraction
+
+## Routes
+
+- `/` marketing landing page
+- `/login` email/password authentication
+- `/search` generate new reports and view recent predictions
+- `/reports/[stockCode]` view a report for a stock code
+
+## API Endpoints
+
+- `POST /api/v1/generate` generate a new report (auth + credits required)
+- `GET /api/v1/predictions` fetch recent reports
+
+## Environment Variables
+
+Create a `.env` file with the following:
+
+```
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+GEMINI_API_KEY=your_google_gemini_api_key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_supabase_anon_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npx prisma migrate dev
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open `http://localhost:3000`.
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` start the dev server
+- `npm run build` build for production
+- `npm start` run the production server
+- `npm run lint` run ESLint
+- `npm run prisma:generate` generate Prisma client
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- The analysis is a mathematical projection based on public fundamentals, not financial advice.
+- Screener.in content can change; if scraping fails, verify stock codes and availability.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT

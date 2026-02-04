@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as cheerio from "cheerio";
+import { cookies } from "next/headers";
 import { prisma } from "@/utils/prisma";
+import { createClient } from "@/utils/supabase/server";
 
 import {
     GoogleGenAI,
@@ -58,6 +60,46 @@ function toInt(value: unknown): number {
 }
 
 export async function POST(request: NextRequest) {
+    // Get authenticated user
+    const supabase = createClient(cookies());
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+        return NextResponse.json(
+            { success: false, data: null, error: "Unauthorized" },
+            { status: 401 }
+        );
+    }
+
+    // Check if user has enough credits
+    const user = await prisma.user.findUnique({
+        where: { email: authData.user.email! },
+    });
+
+    if (!user) {
+        // Create user if they don't exist (first-time user)
+        await prisma.user.create({
+            data: {
+                email: authData.user.email!,
+                name: authData.user.user_metadata?.name || null,
+                creditsAvailable: 10,
+                creditsUsed: 0,
+            },
+        });
+    }
+
+    const currentUser = user || await prisma.user.findUnique({
+        where: { email: authData.user.email! },
+    });
+
+    const remainingCredits = (currentUser?.creditsAvailable || 0) - (currentUser?.creditsUsed || 0);
+    if (remainingCredits <= 0) {
+        return NextResponse.json(
+            { success: false, data: null, error: "Insufficient credits. Please purchase more credits to generate reports." },
+            { status: 403 }
+        );
+    }
+
     const { code } = await request.json();
 
     const existingAnalysis = await prisma.prediction.findFirst({
@@ -130,6 +172,14 @@ export async function POST(request: NextRequest) {
             accuracy,
             result: data.result,
             date: new Date(),
+        },
+    });
+
+    // Deduct 1 credit after successful report generation
+    await prisma.user.update({
+        where: { email: authData.user.email! },
+        data: {
+            creditsUsed: { increment: 1 },
         },
     });
 
