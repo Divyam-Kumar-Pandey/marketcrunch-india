@@ -257,7 +257,7 @@ async function aiAnalysis(pageData: any) {
             }
         ],
     };
-    const model = 'gemini-flash-lite-latest';
+    const model = 'gemini-3-flash-preview';
     const contents = [
         {
             role: 'user',
