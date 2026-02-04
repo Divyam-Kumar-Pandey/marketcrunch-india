@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 const predictions = [
   {
@@ -34,6 +34,62 @@ const predictions = [
     result: "Hit",
   },
 ];
+
+const TradingViewWidget = memo(function TradingViewWidget() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const script = document.createElement("script");
+    script.src =
+      "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = `
+      {
+        "dataSource": "SENSEX",
+        "blockSize": "market_cap_basic",
+        "blockColor": "change",
+        "grouping": "sector",
+        "locale": "en",
+        "symbolUrl": "",
+        "colorTheme": "dark",
+        "exchanges": [],
+        "hasTopBar": false,
+        "isDataSetEnabled": false,
+        "isZoomEnabled": true,
+        "hasSymbolTooltip": true,
+        "isMonoSize": false,
+        "width": "100%",
+        "height": "100%"
+      }`;
+
+    containerRef.current.appendChild(script);
+
+    return () => {
+      if (containerRef.current?.contains(script)) {
+        containerRef.current.removeChild(script);
+      }
+    };
+  }, []);
+
+  return (
+    <div className="tradingview-widget-container" ref={containerRef}>
+      <div className="tradingview-widget-container__widget" />
+      <div className="tradingview-widget-copyright">
+        <a
+          href="https://www.tradingview.com/heatmap/stock/"
+          rel="noopener nofollow"
+          target="_blank"
+        >
+          <span className="blue-text">Stock Heatmap</span>
+        </a>
+        <span className="trademark"> by TradingView</span>
+      </div>
+    </div>
+  );
+});
 
 export default function Home() {
   const [ticker, setTicker] = useState("");
@@ -102,11 +158,8 @@ export default function Home() {
                 signals. Built for Gen Z traders who trust data, not noise.
               </p>
               <div className="flex flex-wrap gap-4">
-                <button onClick={() => window.location.href = "/login"} className="rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-[#0A1128] shadow-lg shadow-amber-500/20">
+                <button onClick={() => window.location.href = "/login"} className="cursor-pointer rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-[#0A1128] shadow-lg shadow-amber-500/20">
                   Start Predicting
-                </button>
-                <button className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/80">
-                  See Live Signals
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-6 text-sm text-white/60">
@@ -339,6 +392,27 @@ export default function Home() {
                 <p className="text-sm text-white/60">
                   Get your morning pre-set before the bell.
                 </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-white/50">
+                  Market Heatmap
+                </p>
+                <h2 className="text-3xl font-semibold">
+                  See the Sensex pulse live.
+                </h2>
+              </div>
+              <p className="text-sm text-white/60">
+                Sector-level sentiment, instantly.
+              </p>
+            </div>
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-2">
+              <div className="h-[520px] w-full">
+                <TradingViewWidget />
               </div>
             </div>
           </section>
