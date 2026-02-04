@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type Company = {
+  name: string;
+  code: string;
+};
+
 type Prediction = {
   id: string;
   stockCode: string;
@@ -27,6 +32,10 @@ type PredictionsApiResponse =
   | { success: true; data: Prediction[]; error: null }
   | { success: false; data: null; error: string };
 
+type CompaniesApiResponse =
+  | { success: true; data: Company[]; error: null }
+  | { success: false; data: null; error: string };
+
 export default function SearchPage() {
   const router = useRouter();
   const [stockCode, setStockCode] = useState("");
@@ -35,10 +44,68 @@ export default function SearchPage() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [isPaused, setIsPaused] = useState(false);
 
+  const [suggestions, setSuggestions] = useState<Company[]>([]);
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+
   const normalizedCode = useMemo(
     () => stockCode.trim().toUpperCase(),
     [stockCode]
   );
+
+  // Fetch company suggestions based on input
+  useEffect(() => {
+    const query = stockCode.trim();
+    if (!query) {
+      setSuggestions([]);
+      setIsSuggestionsLoading(false);
+      setActiveSuggestionIndex(-1);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchSuggestions() {
+      setIsSuggestionsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/v1/companies?q=${encodeURIComponent(query)}`
+        );
+        const payload = (await response.json()) as CompaniesApiResponse;
+
+        if (cancelled) return;
+
+        if (payload.success && payload.data) {
+          setSuggestions(payload.data);
+          setActiveSuggestionIndex(payload.data.length > 0 ? 0 : -1);
+        } else {
+          setSuggestions([]);
+          setActiveSuggestionIndex(-1);
+        }
+      } catch {
+        if (!cancelled) {
+          setSuggestions([]);
+          setActiveSuggestionIndex(-1);
+        }
+      } finally {
+        if (!cancelled) setIsSuggestionsLoading(false);
+      }
+    }
+
+    fetchSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stockCode]);
+
+  const handlePickSuggestion = (company: Company) => {
+    setStockCode(company.code);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setActiveSuggestionIndex(-1);
+  };
 
   // Fetch all predictions on mount
   useEffect(() => {
@@ -142,7 +209,41 @@ export default function SearchPage() {
                 <span className="text-sm text-white/60">NSE</span>
                 <input
                   value={stockCode}
-                  onChange={(event) => setStockCode(event.target.value)}
+                  onChange={(event) => {
+                    setStockCode(event.target.value);
+                    setShowSuggestions(true);
+                    setError("");
+                  }}
+                  onFocus={() => {
+                    if (stockCode.trim()) setShowSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    // Allow clicks inside dropdown to register first.
+                    window.setTimeout(() => setShowSuggestions(false), 120);
+                  }}
+                  onKeyDown={(event) => {
+                    if (!showSuggestions || suggestions.length === 0) return;
+
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setActiveSuggestionIndex((prev) =>
+                        prev < suggestions.length - 1 ? prev + 1 : 0
+                      );
+                    } else if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setActiveSuggestionIndex((prev) =>
+                        prev > 0 ? prev - 1 : suggestions.length - 1
+                      );
+                    } else if (event.key === "Enter") {
+                      if (activeSuggestionIndex >= 0) {
+                        event.preventDefault();
+                        const picked = suggestions[activeSuggestionIndex];
+                        if (picked) handlePickSuggestion(picked);
+                      }
+                    } else if (event.key === "Escape") {
+                      setShowSuggestions(false);
+                    }
+                  }}
                   placeholder="e.g. RELIANCE, HDFCBANK"
                   className="w-full bg-transparent text-lg font-semibold tracking-wide text-white outline-none placeholder:text-white/40 md:text-xl"
                 />
@@ -154,6 +255,48 @@ export default function SearchPage() {
                   {isLoading ? "Generating..." : "Generate"}
                 </button>
               </div>
+
+              {showSuggestions && (isSuggestionsLoading || suggestions.length > 0) && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0A1128]/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                  <div className="max-h-80 overflow-auto py-2">
+                    {isSuggestionsLoading && (
+                      <div className="px-5 py-3 text-sm text-white/60">
+                        Searching…
+                      </div>
+                    )}
+
+                    {!isSuggestionsLoading &&
+                      suggestions.map((company, idx) => (
+                        <button
+                          key={`${company.code}-${idx}`}
+                          type="button"
+                          onMouseDown={(e) => {
+                            // Prevent input blur from cancelling the click.
+                            e.preventDefault();
+                          }}
+                          onClick={() => handlePickSuggestion(company)}
+                          className={`flex w-full items-center justify-between gap-4 px-5 py-3 text-left transition ${
+                            idx === activeSuggestionIndex
+                              ? "bg-white/10"
+                              : "hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-white">
+                              {company.name}
+                            </div>
+                            <div className="mt-0.5 text-xs text-white/60">
+                              NSE: {company.code}
+                            </div>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-xs font-semibold text-white/80">
+                            {company.code}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </form>
 
