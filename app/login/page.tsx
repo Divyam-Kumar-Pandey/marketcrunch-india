@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   const redirectTo = isSafeRedirect(searchParams.get("redirectedFrom"))
     ? searchParams.get("redirectedFrom")!
-    : "/";
+    : "/search";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

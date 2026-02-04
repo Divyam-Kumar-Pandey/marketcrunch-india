@@ -37,6 +37,26 @@ async function getPageData(code: string) {
     }
 }
 
+function toFloat(value: unknown): number {
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+        const normalized = value.replace(/,/g, "").replace(/%/g, "").trim();
+        const parsed = Number.parseFloat(normalized);
+        if (!Number.isNaN(parsed)) return parsed;
+    }
+    return Number.NaN;
+}
+
+function toInt(value: unknown): number {
+    if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+    if (typeof value === "string") {
+        const normalized = value.replace(/,/g, "").replace(/%/g, "").trim();
+        const parsed = Number.parseInt(normalized, 10);
+        if (!Number.isNaN(parsed)) return parsed;
+    }
+    return Number.NaN;
+}
+
 export async function POST(request: NextRequest) {
     const { code } = await request.json();
 
@@ -72,18 +92,43 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, data: null, error: "Failed to parse response" }, { status: 500 });
     }
 
+    const currentPrice = toFloat(data.currentPrice);
+    const priceChange = toFloat(data.priceChange);
+    const priceChangePercentage = toFloat(data.priceChangePercentage);
+    const predictedPriceIn30Days = toFloat(data.predictedPriceIn30Days);
+    const predictedPriceIn90Days = toFloat(data.predictedPriceIn90Days);
+    const predictedPriceIn180Days = toFloat(data.predictedPriceIn180Days);
+    const accuracy = toInt(data.accuracy);
+
+    if (
+        [currentPrice, priceChange, priceChangePercentage, predictedPriceIn30Days, predictedPriceIn90Days, predictedPriceIn180Days].some(
+            (n) => !Number.isFinite(n),
+        ) ||
+        !Number.isFinite(accuracy)
+    ) {
+        return NextResponse.json(
+            {
+                success: false,
+                data: null,
+                error:
+                    "AI response had invalid numeric values. Ensure percent/number fields are returned as numbers (not strings like '80%' or '3,225').",
+            },
+            { status: 500 },
+        );
+    }
+
     await prisma.prediction.create({
         data: {
             stockCode: data.stockCode,
             stockName: data.stockName,
-            currentPrice: data.currentPrice,
-            priceChange: data.priceChange,
-            priceChangePercentage: data.priceChangePercentage,
-            predictedPriceIn30Days: data.predictedPriceIn30Days,
-            predictedPriceIn90Days: data.predictedPriceIn90Days,
-            predictedPriceIn180Days: data.predictedPriceIn180Days,
+            currentPrice,
+            priceChange,
+            priceChangePercentage,
+            predictedPriceIn30Days,
+            predictedPriceIn90Days,
+            predictedPriceIn180Days,
             signal: data.signal,
-            accuracy: data.accuracy,
+            accuracy,
             result: data.result,
             date: new Date(),
         },
@@ -119,22 +164,22 @@ async function aiAnalysis(pageData: any) {
                     type: Type.NUMBER,
                 },
                 priceChangePercentage: {
-                    type: Type.STRING,
+                    type: Type.NUMBER,
                 },
                 predictedPriceIn30Days: {
-                    type: Type.STRING,
+                    type: Type.NUMBER,
                 },
                 predictedPriceIn90Days: {
-                    type: Type.STRING,
+                    type: Type.NUMBER,
                 },
                 predictedPriceIn180Days: {
-                    type: Type.STRING,
+                    type: Type.NUMBER,
                 },
                 signal: {
                     type: Type.STRING,
                 },
                 accuracy: {
-                    type: Type.STRING,
+                    type: Type.NUMBER,
                 },
                 result: {
                     type: Type.STRING,
