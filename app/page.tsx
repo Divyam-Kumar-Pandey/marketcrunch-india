@@ -16,7 +16,9 @@ import {
   HiGlobe,
   HiChip,
   HiEye,
-  HiPlay
+  HiPlay,
+  HiLockClosed,
+  HiX
 } from "react-icons/hi";
 import { 
   HiArrowTrendingUp, 
@@ -139,6 +141,7 @@ export default function Home() {
   const [ticker, setTicker] = useState("");
   const [showLogic, setShowLogic] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -150,6 +153,17 @@ export default function Home() {
     const timer = setTimeout(() => setShowLogic(false), 2000);
     return () => clearTimeout(timer);
   }, [ticker]);
+
+  const handleInputFocus = () => {
+    setShowSignInPrompt(true);
+  };
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Show sign-in prompt instead of allowing input
+    setShowSignInPrompt(true);
+    // Optionally clear any typed value
+    setTicker("");
+  };
 
   return (
     <div className="min-h-screen bg-[#0A1128] text-white overflow-hidden">
@@ -388,7 +402,7 @@ export default function Home() {
                 Gen Z doesn&apos;t want hype. They want proof. Search any ticker and watch the logic stack light up.
               </p>
               
-              <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+              <div className="relative space-y-4 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
                 <label className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-white/50">
                   <HiSearch className="h-4 w-4" />
                   Search the markets
@@ -397,10 +411,12 @@ export default function Home() {
                   <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40" />
                   <input
                     value={ticker}
-                    onChange={(event) => setTicker(event.target.value)}
+                    onChange={handleInputChange}
+                    onFocus={handleInputFocus}
                     placeholder="Search $TATASTEEL, $ZOMATO, or $NIFTY..."
-                    className="w-full rounded-xl border border-white/10 bg-[#0A1128]/60 pl-12 pr-4 py-4 text-base text-white placeholder:text-white/40 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 transition-all"
+                    className="w-full rounded-xl border border-white/10 bg-[#0A1128]/60 pl-12 pr-4 py-4 text-base text-white placeholder:text-white/40 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 transition-all cursor-pointer"
                   />
+                  <HiLockClosed className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-amber-400/60" />
                 </div>
                 <div className="flex items-center gap-3 text-sm text-white/60">
                   <span className="relative flex h-2 w-2">
@@ -410,6 +426,72 @@ export default function Home() {
                   <span>Aura&apos;s Outlook: <span className="text-emerald-300 font-semibold">Bullish (80% Confidence)</span></span>
                 </div>
               </div>
+              
+              {/* Sign In Prompt Overlay */}
+              {showSignInPrompt && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+                  <div className="relative w-full max-w-md rounded-3xl border border-white/20 bg-[#0A1128]/95 p-8 shadow-2xl backdrop-blur-xl animate-scale-in">
+                    {/* Close Button */}
+                    <button 
+                      onClick={() => setShowSignInPrompt(false)}
+                      className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                    >
+                      <HiX className="h-5 w-5 text-white/60" />
+                    </button>
+                    
+                    {/* Lock Icon */}
+                    <div className="flex justify-center mb-6">
+                      <div className="relative">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400 to-emerald-400 blur-xl opacity-50" />
+                        <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400/20 to-emerald-400/20 border border-white/20">
+                          <HiLockClosed className="h-10 w-10 text-amber-400" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="text-center space-y-4">
+                      <h3 className="text-2xl font-bold">Sign In Required</h3>
+                      <p className="text-white/70">
+                        Unlock AI-powered market predictions and real-time signals. Sign in to access the full power of Market Crunch AI.
+                      </p>
+                      
+                      {/* Features List */}
+                      <div className="flex flex-col gap-3 py-4 text-left">
+                        <div className="flex items-center gap-3 text-sm text-white/80">
+                          <HiCheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+                          <span>Real-time stock predictions with 80%+ accuracy</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-white/80">
+                          <HiCheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+                          <span>AI-powered sentiment analysis</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-white/80">
+                          <HiCheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+                          <span>Personalized trading insights</span>
+                        </div>
+                      </div>
+                      
+                      {/* CTA Buttons */}
+                      <div className="flex flex-col gap-3 pt-2">
+                        <button 
+                          onClick={() => window.location.href = "/login"}
+                          className="w-full flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 px-6 py-4 text-base font-bold text-[#0A1128] shadow-lg shadow-amber-500/30 hover-lift"
+                        >
+                          <HiRocketLaunch className="h-5 w-5" />
+                          Sign In to Continue
+                        </button>
+                        <button 
+                          onClick={() => setShowSignInPrompt(false)}
+                          className="w-full rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white/70 hover:bg-white/10 transition-colors"
+                        >
+                          Maybe Later
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {showLogic && (
                 <div className="flex items-center gap-3 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-100 animate-fade-in-up">

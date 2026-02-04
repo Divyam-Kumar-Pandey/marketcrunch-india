@@ -60,7 +60,6 @@ function toInt(value: unknown): number {
 export async function POST(request: NextRequest) {
     const { code } = await request.json();
 
-    // check if the analysis is already done for the stock code
     const existingAnalysis = await prisma.prediction.findFirst({
         where: {
             stockCode: code,

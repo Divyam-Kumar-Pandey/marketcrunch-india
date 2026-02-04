@@ -1,40 +1,64 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Prediction = {
+  id: string;
   stockCode: string;
   stockName: string;
   currentPrice: number;
   priceChange: number;
-  priceChangePercentage: string;
-  predictedPriceIn30Days: string;
-  predictedPriceIn90Days: string;
-  predictedPriceIn180Days: string;
+  priceChangePercentage: number;
+  predictedPriceIn30Days: number;
+  predictedPriceIn90Days: number;
+  predictedPriceIn180Days: number;
   signal: string;
-  accuracy: string;
+  accuracy: number;
   result: string;
+  createdAt: string;
 };
 
-type ApiResponse =
+type GenerateApiResponse =
   | { success: true; data: Prediction; error: null }
   | { success: false; data: null; error: string };
 
+type PredictionsApiResponse =
+  | { success: true; data: Prediction[]; error: null }
+  | { success: false; data: null; error: string };
+
 export default function SearchPage() {
+  const router = useRouter();
   const [stockCode, setStockCode] = useState("");
-  const [result, setResult] = useState<Prediction | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
 
   const normalizedCode = useMemo(
     () => stockCode.trim().toUpperCase(),
-    [stockCode],
+    [stockCode]
   );
+
+  // Fetch all predictions on mount
+  useEffect(() => {
+    async function fetchPredictions() {
+      try {
+        const response = await fetch("/api/v1/predictions");
+        const payload = (await response.json()) as PredictionsApiResponse;
+        if (payload.success && payload.data) {
+          setPredictions(payload.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch predictions:", err);
+      }
+    }
+    fetchPredictions();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    setResult(null);
 
     if (!normalizedCode) {
       setError("Enter a stock code to continue.");
@@ -50,19 +74,43 @@ export default function SearchPage() {
         },
         body: JSON.stringify({ code: normalizedCode }),
       });
-      const payload = (await response.json()) as ApiResponse;
+      const payload = (await response.json()) as GenerateApiResponse;
 
       if (!response.ok || !payload.success) {
         setError(payload.error ?? "Failed to generate prediction.");
         return;
       }
 
-      setResult(payload.data);
+      // Redirect to the reports page
+      router.push(`/reports/${payload.data.stockCode}`);
     } catch (fetchError) {
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getSignalColor = (signal: string) => {
+    switch (signal.toUpperCase()) {
+      case "STRONG BUY":
+        return "text-emerald-400";
+      case "BUY":
+        return "text-green-400";
+      case "HOLD":
+        return "text-amber-400";
+      case "SELL":
+        return "text-orange-400";
+      case "STRONG SELL":
+        return "text-red-400";
+      default:
+        return "text-white/70";
+    }
+  };
+
+  const getPriceChangeColor = (change: number) => {
+    if (change > 0) return "text-emerald-400";
+    if (change < 0) return "text-red-400";
+    return "text-white/70";
   };
 
   return (
@@ -115,66 +163,101 @@ export default function SearchPage() {
             </div>
           )}
 
-          {result && (
-            <div className="w-full rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          {/* Auto-scrolling predictions section */}
+          {predictions.length > 0 && (
+            <div className="w-full mt-8">
+              <div className="flex items-center justify-between mb-6">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-white/60">
-                    {result.stockCode}
+                    Recent Predictions
                   </p>
                   <h2 className="mt-2 text-2xl font-semibold">
-                    {result.stockName}
+                    Generated Reports
                   </h2>
                 </div>
-                <div className="rounded-full border border-white/10 bg-white/10 px-5 py-2 text-sm text-white/70">
-                  Signal:{" "}
-                  <span className="font-semibold text-emerald-200">
-                    {result.signal}
-                  </span>
-                </div>
+                <button
+                  onClick={() => setIsPaused(!isPaused)}
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+                >
+                  {isPaused ? "Resume" : "Pause"}
+                </button>
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/60">
-                    Current Price
-                  </p>
-                  <p className="mt-3 text-2xl font-semibold">
-                    ₹{result.currentPrice}
-                  </p>
-                  <p className="mt-2 text-sm text-white/70">
-                    {result.priceChange} ({result.priceChangePercentage})
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/60">
-                    Accuracy
-                  </p>
-                  <p className="mt-3 text-2xl font-semibold">
-                    {result.accuracy}
-                  </p>
-                  <p className="mt-2 text-sm text-white/70">
-                    Model confidence score
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/60">
-                    Price Targets
-                  </p>
-                  <p className="mt-3 text-sm text-white/80">
-                    30D: {result.predictedPriceIn30Days}
-                  </p>
-                  <p className="mt-2 text-sm text-white/80">
-                    90D: {result.predictedPriceIn90Days}
-                  </p>
-                  <p className="mt-2 text-sm text-white/80">
-                    180D: {result.predictedPriceIn180Days}
-                  </p>
-                </div>
-              </div>
+              {/* Continuous scroll container */}
+              <div className="overflow-hidden">
+                <div
+                  onMouseEnter={() => setIsPaused(true)}
+                  onMouseLeave={() => setIsPaused(false)}
+                  className="flex gap-4 pb-4"
+                  style={{
+                    animation: `scroll ${predictions.length * 5}s linear infinite`,
+                    animationPlayState: isPaused ? "paused" : "running",
+                    width: "fit-content",
+                  }}
+                >
+                  {/* Render predictions twice for seamless loop */}
+                  {[...predictions, ...predictions].map((prediction, index) => (
+                    <div
+                      key={`${prediction.id}-${index}`}
+                      onClick={() => router.push(`/reports/${prediction.stockCode}`)}
+                      className="flex-shrink-0 w-72 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-white/60">
+                            {prediction.stockCode}
+                          </p>
+                          <h3 className="mt-1 text-lg font-semibold truncate max-w-[180px]">
+                            {prediction.stockName}
+                          </h3>
+                        </div>
+                        <span
+                          className={`text-xs font-semibold px-2 py-1 rounded-full bg-white/10 ${getSignalColor(
+                            prediction.signal
+                          )}`}
+                        >
+                          {prediction.signal}
+                        </span>
+                      </div>
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/80">
-                {result.result}
+                      <div className="flex items-baseline gap-2 mb-4">
+                        <span className="text-2xl font-semibold">
+                          ₹{prediction.currentPrice.toLocaleString("en-IN")}
+                        </span>
+                        <span
+                          className={`text-sm ${getPriceChangeColor(
+                            prediction.priceChange
+                          )}`}
+                        >
+                          {prediction.priceChange > 0 ? "+" : ""}
+                          {prediction.priceChange.toFixed(2)} (
+                          {prediction.priceChangePercentage.toFixed(2)}%)
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between text-white/70">
+                          <span>30D Target</span>
+                          <span className="font-medium text-white">
+                            ₹{prediction.predictedPriceIn30Days.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-white/70">
+                          <span>90D Target</span>
+                          <span className="font-medium text-white">
+                            ₹{prediction.predictedPriceIn90Days.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-white/70">
+                          <span>Accuracy</span>
+                          <span className="font-medium text-emerald-400">
+                            {prediction.accuracy}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
